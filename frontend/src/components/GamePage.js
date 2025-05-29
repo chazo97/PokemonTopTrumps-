@@ -1,13 +1,22 @@
 // src/components/GamePage.js
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
+import logo from '../assets/Poketrumps.png';
+import bgImage from '../assets/PokeTrumps-BG.png'; 
 import './GamePage.css';
+import PokemonCard from './PokemonCard';
 
 const GamePage = () => {
   const [playerPokemon, setPlayerPokemon] = useState(null);
   const [opponentPokemon, setOpponentPokemon] = useState(null);
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const [winCount, setWinCount] = useState(() => {
+    const stored = localStorage.getItem('winCount');
+    return stored ? parseInt(stored, 10) : 0;
+  });
 
   useEffect(() => {
     axios.get('http://127.0.0.1:5000/api/player')
@@ -20,6 +29,16 @@ const GamePage = () => {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (result && result.toLowerCase() === 'win') {
+      setWinCount(prev => {
+        const newCount = prev + 1;
+        localStorage.setItem('winCount', newCount);
+        return newCount;
+      });
+    }
+  }, [result]);
 
   const handleStatClick = (stat) => {
     axios.post('http://127.0.0.1:5000/api/compare', {
@@ -41,79 +60,51 @@ const GamePage = () => {
         setPlayerPokemon(response.data.player);
         setOpponentPokemon(null);
         setResult('');
+        setLoading(false);
       })
       .catch(error => {
         console.error('Error restarting game', error);
       });
   };
 
-  const getSprite = (id) =>
-    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
-
   return (
-    <div className="game-container">
-      <h1 className="game-title">Top Trumps Pokémon</h1>
+    <div
+      className="game-container"
+      style={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        minHeight: '100vh'
+      }}
+    >
+      <Link to="/">
+        <img src={logo} alt="Poketrumps Logo" className="landing-logo" style={{ width: '250px', maxWidth: '90vw', marginBottom: '1.5rem', display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
+      </Link>
       {loading && <p>Loading...</p>}
 
       <div className="card-grid">
         {playerPokemon && (
-          <div className="card-wrapper">
-            <div className="pokemon-card">
-              <div className="card-top">Your Pokémon</div>
-              <h3 className="card-name">{playerPokemon.name}</h3>
-              <div className="card-image-box">
-                <img
-                  src={getSprite(playerPokemon.id)}
-                  alt={playerPokemon.name}
-                  className="pokemon-image"
-                />
+          <PokemonCard pokemon={playerPokemon} title="Your Pokémon">
+            {!opponentPokemon && (
+              <div className="stat-buttons">
+                <button onClick={() => handleStatClick('id')}>ID</button>
+                <button onClick={() => handleStatClick('height')}>Height</button>
+                <button onClick={() => handleStatClick('weight')}>Weight</button>
               </div>
-              <div className="card-bottom">
-                <div className="card-stats">
-                  <div><strong>ID:</strong> {playerPokemon.id}</div>
-                  <div><strong>Height:</strong> {playerPokemon.height}</div>
-                  <div><strong>Weight:</strong> {playerPokemon.weight}</div>
-                </div>
-              </div>
-
-              {!opponentPokemon && (
-                <div className="stat-buttons">
-                  <button onClick={() => handleStatClick('id')}>ID</button>
-                  <button onClick={() => handleStatClick('height')}>Height</button>
-                  <button onClick={() => handleStatClick('weight')}>Weight</button>
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </PokemonCard>
         )}
 
         {opponentPokemon && (
-          <div className="card-wrapper">
-            <div className="pokemon-card">
-              <div className="card-top">Opponent's Pokémon</div>
-              <h3 className="card-name">{opponentPokemon.name}</h3>
-              <div className="card-image-box">
-                <img
-                  src={getSprite(opponentPokemon.id)}
-                  alt={opponentPokemon.name}
-                  className="pokemon-image"
-                />
-              </div>
-              <div className="card-bottom">
-                <div className="card-stats">
-                  <div><strong>ID:</strong> {opponentPokemon.id}</div>
-                  <div><strong>Height:</strong> {opponentPokemon.height}</div>
-                  <div><strong>Weight:</strong> {opponentPokemon.weight}</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <PokemonCard pokemon={opponentPokemon} title="Opponent's Pokémon" />
         )}
       </div>
 
       {result && (
         <div className="result-section">
-          <h2 className={`result ${result.toLowerCase()}`}>{result.toUpperCase()}</h2>
+          <h2 className={`result game-title ${result.toLowerCase()}`}>{result.toUpperCase()}</h2>
+          <div className="win-count game-title">Winning count: {winCount}</div>
           <button className="play-button" onClick={handlePlayAgain}>Play Again</button>
         </div>
       )}
